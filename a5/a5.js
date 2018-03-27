@@ -1,9 +1,12 @@
 /////////////////////////////////////////////////////////////////////////////////////////
 //  UBC CPSC 314,  Vjan2018
-//  Assignment 5 Template;   compatible with three.js  r90
+//  Assignment 5 Linn Hornwall, b6n1b;   compatible with three.js  r90
 /////////////////////////////////////////////////////////////////////////////////////////
 
 console.log('hello world');
+
+var time = 0;
+var varyingColour = false;
 
 //  another print example
 myvector = new THREE.Vector3(0,1,2);
@@ -77,10 +80,22 @@ var envmapMaterial = new THREE.ShaderMaterial( {
            lightPosition: {value: new THREE.Vector3(0.0,0.0,-1.0) },
 	   matrixWorld: {value: new THREE.Matrix4()},
            myTexture: {type: 't', value: posyTexture},     // give access to skybox top texture
-           myColor: { value: new THREE.Vector4(0.8,0.8,0.6,1.0) }
+           myColor: { value: new THREE.Vector4(1.0,0.5,0.7,1.0) }
         },
 	vertexShader: document.getElementById( 'myVertShader' ).textContent,
 	fragmentShader: document.getElementById( 'envmapFragShader' ).textContent
+} );
+
+////////////////////// ENVMAP SHADER 2/////////////////////////////
+//used to shade the sphere
+var envmapMaterial2 = new THREE.ShaderMaterial( {
+        uniforms: {
+           lightPosition: {value: new THREE.Vector3(0.0,0.0,-1.0) },
+	   matrixWorld: {value: new THREE.Matrix4()},
+           myTexture: {type: 't', value: posyTexture}     // give access to skybox top texture
+        },
+	vertexShader: document.getElementById( 'myVertShader' ).textContent,
+	fragmentShader: document.getElementById( 'envmapFragShader2' ).textContent
 } );
 
 ////////////////////// BUMP SHADER /////////////////////////////
@@ -94,6 +109,38 @@ var myBumpMaterial = new THREE.ShaderMaterial( {
 	fragmentShader: document.getElementById( 'myBumpShader' ).textContent
 } );
 myBumpMaterial.uniforms.lightPosition.value.needsUpdate = true;
+
+////////////////////// BUMP SHADER 2/////////////////////////////
+
+var myBumpMaterial2 = new THREE.ShaderMaterial( {
+        uniforms: {
+           lightPosition: {value: new THREE.Vector3(0.0,0.0,-1.0) },
+           myColor: { value: new THREE.Vector4(0.0,1.0,0.9,1.0) },
+           t: {value: time},
+           changeColour: {value: false}
+        },
+	vertexShader: document.getElementById( 'myVertShader' ).textContent,
+	fragmentShader: document.getElementById( 'myBumpShader2' ).textContent
+} );
+myBumpMaterial2.uniforms.lightPosition.value.needsUpdate = true;
+myBumpMaterial2.uniforms.t.value.needsUpdate = true;
+myBumpMaterial2.uniforms.changeColour.value.needsUpdate = true;
+
+////////////////////// FLOOR SHADER/////////////////////////////
+
+var danceFloorMaterial = new THREE.ShaderMaterial( {
+        uniforms: {
+           lightPosition: {value: new THREE.Vector3(0.0,0.0,-1.0) },
+           myColor: { value: new THREE.Vector4(0.52,0.44,1.0,1.0) },
+           t: {value: time},
+           changeColour: {value: false}
+        },
+	vertexShader: document.getElementById( 'myVertShader' ).textContent,
+	fragmentShader: document.getElementById( 'myFloorShader' ).textContent
+} );
+danceFloorMaterial.uniforms.lightPosition.value.needsUpdate = true;
+danceFloorMaterial.uniforms.t.value.needsUpdate = true;
+danceFloorMaterial.uniforms.changeColour.value.needsUpdate = true;
 
 ////////////////////// HOLEY SHADER /////////////////////////////
 
@@ -148,7 +195,6 @@ negxMaterial = new THREE.MeshBasicMaterial( {map: negxTexture, side:THREE.Double
 negxWall = new THREE.Mesh(wallGeometry, negxMaterial);   // define the wall object:  geom + shader
 negxWall.position.x = size;
 negxWall.rotation.y = -Math.PI / 2;
-negxWall.rotation.x = Math.PI;
 scene.add(negxWall);
 
 posyTexture = textureLoader.load( "images/posy.jpg" );   //  load texture map
@@ -196,6 +242,16 @@ floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.position.y = -1.1;
 floor.rotation.x = Math.PI / 2;
 scene.add(floor);
+
+/////////////////////////////////////
+// FLOOR segment under armadillo
+/////////////////////////////////////
+circleGeometry = new THREE.CircleGeometry(3,32);
+danceFloor = new THREE.Mesh(circleGeometry,danceFloorMaterial);
+danceFloor.position.set(-5.3,0,0);
+danceFloor.rotation.x = -Math.PI/2;
+danceFloor.position.y = -0.8;
+scene.add(danceFloor);
 
 ///////////////////////////////////////////////////////////////////////
 //   sphere, representing the light
@@ -264,11 +320,19 @@ customObject = new THREE.Mesh( geom, myBumpMaterial );
 customObject.position.set(0, 0, -2);
 scene.add(customObject);
 
+/////////////////////////////////////
+//  CUSTOM OBJECT 2
+////////////////////////////////////
+
+customObject2 = new THREE.Mesh( geom, myBumpMaterial2 );
+customObject2.position.set(-4, 0, -2);
+scene.add(customObject2);
+
 /////////////////////////////////////////////////////////////////////////
 // sphere
 /////////////////////////////////////////////////////////////////////////
 
-sphereA = new THREE.Mesh( new THREE.SphereGeometry( 2, 20, 10 ), envmapMaterial );
+sphereA = new THREE.Mesh( new THREE.SphereGeometry( 2, 20, 10 ), envmapMaterial2 );
 sphereA.position.set(0,0,0);
 scene.add( sphereA );
 
@@ -300,7 +364,7 @@ loader.load( 'obj/armadillo.obj', function ( object ) {
 	scene.add( object );
         object.scale.set(2,2,2);
         object.position.x = -5;
-        object.position.y = 1;
+        object.position.y = 1.3;
 }, onProgress, onError );
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -318,6 +382,12 @@ function checkKeyboard() {
     light.position.x -= 0.1;
   else if (keyboard.pressed("D"))
     light.position.x += 0.1;
+  if(keyboard.pressed("C")) {
+    myBumpMaterial2.uniforms.changeColour.value = !(myBumpMaterial2.uniforms.changeColour.value);
+    danceFloorMaterial.uniforms.changeColour.value = !(danceFloorMaterial.uniforms.changeColour.value);
+  }
+  myBumpMaterial2.uniforms.changeColour.value.needsUpdate = true;
+  danceFloorMaterial.uniforms.changeColour.value.needsUpdate = true;
   lightSphere.position.set(light.position.x, light.position.y, light.position.z);
 
     // compute light position in VCS coords,  supply this to the shaders
@@ -332,6 +402,8 @@ function checkKeyboard() {
   holeyMaterial.uniforms.lightPosition.value.needsUpdate = true;
   envmapMaterial.uniforms.lightPosition.value = vcsLight;
   envmapMaterial.uniforms.lightPosition.value.needsUpdate = true;
+  envmapMaterial2.uniforms.lightPosition.value = vcsLight;
+  envmapMaterial2.uniforms.lightPosition.value.needsUpdate = true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -339,10 +411,17 @@ function checkKeyboard() {
 ///////////////////////////////////////////////////////////////////////////////////////
 
 function update() {
+  ++time;
   checkKeyboard();
   requestAnimationFrame(update);
   envmapMaterial.uniforms.matrixWorld.value = camera.matrixWorld;
   envmapMaterial.uniforms.matrixWorld.update = true;
+  envmapMaterial2.uniforms.matrixWorld.value = camera.matrixWorld;
+  envmapMaterial2.uniforms.matrixWorld.update = true;
+  myBumpMaterial2.uniforms.t.value = time;
+  myBumpMaterial2.uniforms.t.update = true;
+  danceFloorMaterial.uniforms.t.value = time;
+  danceFloorMaterial.uniforms.t.update = true;
   renderer.render(scene, camera);
 }
 

@@ -1,3 +1,4 @@
+<!-- CPSC 314 Assignment 5 - Linn Hornwall, b9n1b -->
 <html>
   <head>
     <meta charset="UTF-8">
@@ -34,8 +35,41 @@ void main()
 </script>
 
 <script id="holeyShader" type="x-shader/x-fragment">
+varying vec3 vcsNormal;
+varying vec3 vcsPosition;
+uniform vec3 lightPosition;
+uniform vec3 myColor;
+varying vec3 ocsPosition;
 void main( void ) {
-  gl_FragColor = vec4(0.6,0.6,1.0,1.0);
+  vec3 L = normalize(lightPosition - vcsPosition);
+  vec3 vcsNormal_normalized = normalize(vcsNormal);
+  float i = dot(vcsNormal_normalized,L);
+  //distance between spheres, spheres have coordinates of the form j*stepSize
+  //for some integer j
+  float stepSize = 0.35;
+  vec3 nearestCentre;
+  // for each coordinate, check if the "larger" or "smaller" of the two closest centres
+  // is closer, and adjuct value accordingly
+  if((ocsPosition.x - stepSize*floor(ocsPosition.x / stepSize)) <= stepSize/2.0){
+    nearestCentre.x = stepSize*floor(ocsPosition.x/stepSize);
+  } else{
+    nearestCentre.x = stepSize*ceil(ocsPosition.x/stepSize);
+  }
+  if((ocsPosition.y - stepSize*floor(ocsPosition.y / stepSize)) <= stepSize/2.0){
+    nearestCentre.y = stepSize*floor(ocsPosition.y/stepSize);
+  } else{
+    nearestCentre.y = stepSize*ceil(ocsPosition.y/stepSize);
+  }
+  if((ocsPosition.z - stepSize*floor(ocsPosition.z / stepSize)) <= stepSize/2.0){
+    nearestCentre.z = stepSize*floor(ocsPosition.z/stepSize);
+  } else{
+    nearestCentre.z = stepSize*ceil(ocsPosition.z/stepSize);
+  }
+  float radius = 0.15; //radius of the spheres
+  if(distance(ocsPosition,nearestCentre) <= radius){
+   discard;
+  }
+  gl_FragColor = i*vec4(myColor,1.0);
 }
 </script>
 
@@ -63,20 +97,137 @@ varying vec3 ocsPosition;
 varying vec3 vcsPosition;
 
 void main( void ) {
-
-  gl_FragColor = vec4(0.4,0.8,0.4,1.0);
+  vec3 I = vcsPosition;
+  vec3 R = normalize(reflect(I,normalize(vcsNormal)));
+  // homogeneous coordinate is 0
+  vec4 R_world = normalize(matrixWorld*vec4(R,0.0));
+  if((R_world.y > 0.0) && (abs(R_world.y) > abs(R_world.x)) && (abs(R_world.y) > abs(R_world.z))){
+      // rays from top face of cube are reflected into visible space
+      float u = 0.5*((R_world.x/R_world.y)+1.0);
+      float v = 0.5*((-R_world.z/R_world.y)+1.0);
+      gl_FragColor = texture2D(myTexture, vec2(u,v));
+  } else {
+    vec3 N = normalize(vcsNormal);
+    vec3 L = normalize(lightPosition - vcsPosition);
+    float i = dot(N,L);
+    gl_FragColor = i*vec4(myColor,1.0);
+  }
 }
 </script>
 
+<script id="envmapFragShader2" type="x-shader/x-fragment">
+// basically the same as the envmapFragShader, but colours in function of x and y
+uniform vec3 lightPosition;
+uniform sampler2D myTexture;
+uniform mat4 matrixWorld;
+varying vec3 vcsNormal;
+varying vec3 ocsPosition;
+varying vec3 vcsPosition;
+
+void main( void ) {
+  vec3 I = vcsPosition;
+  vec3 R = normalize(reflect(I,normalize(vcsNormal)));
+  // homogeneous coordinate is 0
+  vec4 R_world = normalize(matrixWorld*vec4(R,0.0));
+  if((R_world.y > 0.0) && (abs(R_world.y) > abs(R_world.x)) && (abs(R_world.y) > abs(R_world.z))){
+      float u = 0.5*((R_world.x/R_world.y)+1.0);
+      float v = 0.5*((-R_world.z/R_world.y)+1.0);
+      gl_FragColor = texture2D(myTexture, vec2(u,v));
+  } else {
+    float x = ocsPosition.x;
+    float y = ocsPosition.y;
+    vec3 N = normalize(vcsNormal);
+    vec3 L = normalize(lightPosition - vcsPosition);
+    float i = dot(N,L);
+    //colour is a function of x and y
+    vec3 colour = vec3(sin(x),cos(y),1.0-sin(x)-cos(y));
+    vec4 myColour = vec4(normalize(colour),1.0);
+    gl_FragColor = myColour*0.4 + 0.6*i*myColour;
+  }
+}
+</script>
 
 <script id="myBumpShader" type="x-shader/x-fragment">
+
+varying vec3 vcsNormal;
+varying vec3 vcsPosition;
+varying vec3 ocsPosition;
+uniform vec3 lightPosition;
+uniform vec3 myColor;
+
 void main( void ) {
-  vec3 surfNormal = vec3(0.0,0.0,1.0);
+  float k = 5.0;
+  vec3 surfNormal = vec3(-cos(k*(ocsPosition.x+ocsPosition.y)),-cos(k*(ocsPosition.y+ocsPosition.x)),1.0);
   vec3 N = normalize(surfNormal);
-  gl_FragColor = vec4(0.7,0.7,0.7,1.0);
+  vec3 L = normalize(lightPosition - vcsPosition);
+  float i = dot(N,L);
+  gl_FragColor = 0.5*vec4(myColor,1.0) + 0.5*i*vec4(myColor,1.0);
 }
 </script>
 
+<script id="myBumpShader2" type="x-shader/x-fragment">
+
+varying vec3 vcsNormal;
+varying vec3 vcsPosition;
+varying vec3 ocsPosition;
+uniform vec3 lightPosition;
+uniform vec3 myColor;
+uniform float t; //time parameter
+uniform bool changeColour;
+
+void main( void ) {
+  float k = 5.0;
+  vec3 surfNormal = vec3(-cos(k*(ocsPosition.x+ocsPosition.y+t/80.0)),-cos(k*(ocsPosition.y+ocsPosition.x+t/80.0)),1.0);
+  vec3 N = normalize(surfNormal);
+  vec3 L = normalize(lightPosition - vcsPosition);
+  float i = dot(N,L);
+  if(!changeColour){
+    gl_FragColor = 0.4*vec4(myColor,1.0) + 0.6*i*vec4(myColor,1.0);
+  } else{
+    float PI = 3.14159265358979;
+    float k = 100.0;
+    float period = k*2.0*PI;
+    vec4 colour = vec4(sin(t/k + (period/3.0)), sin(t/k + 2.0*(period/3.0)),sin(t/k),1.0);
+    gl_FragColor = 0.4*colour + 0.6*i*colour;
+  }
+
+}
+</script>
+
+
+<script id="myFloorShader" type="x-shader/x-fragment">
+// uses radial symmetry for colours and bumps
+varying vec3 vcsNormal;
+varying vec3 vcsPosition;
+varying vec3 ocsPosition;
+uniform vec3 lightPosition;
+uniform vec3 myColor;
+uniform float t; //time parameter
+uniform bool changeColour;
+
+void main( void ) {
+  float k = 1.6;
+  float x = ocsPosition.x;
+  float y = ocsPosition.y;
+  float k1 = 80.0;
+  vec3 surfNormal = vec3(-cos(k*(sqrt(x*x+y*y)+t/k1)),-cos(k*(y*y+x*x)+t/k1),1.0);
+  vec3 N = normalize(surfNormal);
+  vec3 L = normalize(lightPosition - vcsPosition);
+  float i = dot(N,L);
+  if(!changeColour){
+    gl_FragColor = 0.4*vec4(myColor,1.0) + 0.6*i*vec4(myColor,1.0);
+  } else{
+    float PI = 3.14159265358979;
+    float k2 = 100.0;
+    float period = k2*2.0*PI;
+    vec3 colour = vec3(sin(k*(sqrt(x*x+y*y))+ t/k2 + (period/3.0)), sin(k*(sqrt(x*x+y*y)) + t/k2 + 2.0*(period/3.0)),sin(k*(sqrt(x*x+y*y))+t/k2));
+    vec3 colour_normalized = vec3(1.0,1.0,1.0)-normalize(colour);
+    vec4 final_colour = vec4(colour_normalized,1.0);
+    gl_FragColor = 0.1*final_colour + 0.8*i*final_colour;
+  }
+
+}
+</script>
 
 <script src="a5.js"></script>
 </body>
